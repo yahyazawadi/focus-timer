@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, Pause, RotateCcw, Volume2, VolumeX, Sparkles, Activity, Heart, X, ChevronRight, ChevronLeft, Rocket, Target } from 'lucide-react';
+import { Play, Pause, RotateCcw, Volume2, VolumeX, Sparkles, Activity, Heart, X, ChevronRight, ChevronLeft, Rocket, Target, Award, ShieldAlert } from 'lucide-react';
 import './index.css';
 
 const FOCUS_TIME = 12 * 60;
@@ -67,6 +67,25 @@ const playSound = (type, volumeEnabled) => {
     gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.3);
     osc.start();
     osc.stop(audioCtx.currentTime + 0.3);
+  } else if (type === 'victory') {
+    // Elegant minor-to-major synth chord rise
+    const playTone = (freq, startOffset, duration) => {
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.connect(g);
+      g.connect(audioCtx.destination);
+      o.type = 'sine';
+      o.frequency.setValueAtTime(freq, audioCtx.currentTime + startOffset);
+      g.gain.setValueAtTime(0, audioCtx.currentTime + startOffset);
+      g.gain.linearRampToValueAtTime(0.15, audioCtx.currentTime + startOffset + 0.1);
+      g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + startOffset + duration);
+      o.start(audioCtx.currentTime + startOffset);
+      o.stop(audioCtx.currentTime + startOffset + duration);
+    };
+    playTone(261.63, 0, 1.5); // C4
+    playTone(329.63, 0.2, 1.5); // E4
+    playTone(392.00, 0.4, 1.5); // G4
+    playTone(523.25, 0.6, 2.0); // C5
   }
 };
 
@@ -137,6 +156,44 @@ const BurstParticles = ({ trigger, colors }) => {
   );
 };
 
+const VictoryConfetti = ({ active }) => {
+  if (!active) return null;
+  const colors = ['#fbbf24', '#f59e0b', '#38bdf8', '#e879f9', '#a78bfa', '#34d399'];
+  const confetti = Array.from({ length: 50 });
+  return (
+    <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 120 }}>
+      {confetti.map((_, i) => {
+        const xOffset = Math.random() * 100;
+        return (
+          <motion.div
+            key={i}
+            initial={{ y: -50, x: `${xOffset}vw`, scale: Math.random() * 0.6 + 0.4, opacity: 1, rotate: 0 }}
+            animate={{ 
+              y: '105vh',
+              x: `${xOffset + (Math.random() * 10 - 5)}vw`,
+              rotate: 360 * (Math.random() * 4 + 2),
+              opacity: [1, 1, 0]
+            }}
+            transition={{ 
+              duration: Math.random() * 4 + 3,
+              ease: "easeOut",
+              delay: Math.random() * 0.5
+            }}
+            style={{
+              position: 'absolute',
+              width: Math.random() * 10 + 6 + 'px',
+              height: Math.random() * 10 + 6 + 'px',
+              borderRadius: Math.random() > 0.5 ? '50%' : '2px',
+              background: colors[i % colors.length],
+              boxShadow: `0 0 10px ${colors[i % colors.length]}80`
+            }}
+          />
+        );
+      })}
+    </div>
+  );
+};
+
 const themes = [
   { name: 'Aurora', colors: ['#38bdf8', '#818cf8', '#e879f9'] },
   { name: 'Ocean', colors: ['#34d399', '#3b82f6', '#8b5cf6'] },
@@ -181,6 +238,10 @@ export default function App() {
   const [groundingIndex, setGroundingIndex] = useState(0);
   const [gameMode, setGameMode] = useState(false);
 
+  // Victory State
+  const [showWinScreen, setShowWinScreen] = useState(false);
+  const [winAcknowledged, setWinAcknowledged] = useState(false);
+
   // Game Score & Cleared Items lists
   const [score, setScore] = useState(0);
   const [clearedItems, setClearedItems] = useState([]);
@@ -209,6 +270,15 @@ export default function App() {
     }
     return () => clearInterval(interval);
   }, [isActive, timeLeft, soundEnabled]);
+
+  // Score checking for victory
+  useEffect(() => {
+    if (score >= 10000 && !winAcknowledged && !showWinScreen) {
+      setIsActive(false);
+      setShowWinScreen(true);
+      playSound('victory', soundEnabled);
+    }
+  }, [score, winAcknowledged, showWinScreen, soundEnabled]);
 
   // Gamified Focus Blaster Loop
   useEffect(() => {
@@ -471,6 +541,8 @@ export default function App() {
     setTimeLeft(FOCUS_TIME);
     setScore(0);
     setClearedItems([]);
+    setShowWinScreen(false);
+    setWinAcknowledged(false);
   };
 
   const toggleSound = () => {
@@ -507,6 +579,7 @@ export default function App() {
 
       <Particles theme={theme} />
       <BurstParticles trigger={burst} colors={theme.colors} />
+      <VictoryConfetti active={showWinScreen} />
 
       {/* Floating Cleared Distractions (Left & Right Sides) */}
       <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 5 }}>
@@ -804,6 +877,86 @@ export default function App() {
                     Finish Check-in
                   </motion.button>
                 )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Victory / Win Screen Modal Overlay */}
+      <AnimatePresence>
+        {showWinScreen && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{ position: 'absolute', inset: 0, background: 'rgba(9, 9, 11, 0.92)', backdropFilter: 'blur(20px)', zIndex: 110, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px' }}
+          >
+            <motion.div
+              initial={{ scale: 0.8, y: 50, rotate: -2 }}
+              animate={{ scale: 1, y: 0, rotate: 0 }}
+              exit={{ scale: 0.8, y: 50 }}
+              transition={{ type: 'spring', damping: 15 }}
+              style={{ 
+                background: 'rgba(20, 20, 23, 0.85)', 
+                border: '2px solid #fbbf24', 
+                padding: '40px 30px', 
+                borderRadius: '30px', 
+                maxWidth: '520px', 
+                width: '100%', 
+                textAlign: 'center', 
+                position: 'relative', 
+                boxShadow: '0 0 50px rgba(251, 191, 36, 0.3), inset 0 0 20px rgba(251, 191, 36, 0.1)' 
+              }}
+            >
+              {/* Giant Glowing Trophy Icon */}
+              <motion.div
+                animate={{ scale: [1, 1.12, 1], rotate: [0, 5, -5, 0] }}
+                transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+                style={{ display: 'inline-flex', background: 'radial-gradient(circle, rgba(251, 191, 36, 0.2) 0%, transparent 70%)', padding: '30px', borderRadius: '50%', marginBottom: '20px' }}
+              >
+                <Award size={80} color="#fbbf24" style={{ filter: 'drop-shadow(0 0 15px #fbbf24)' }} />
+              </motion.div>
+
+              <h2 style={{ fontSize: '2.5rem', fontWeight: 800, color: '#ffffff', letterSpacing: '2px', textShadow: '0 0 20px rgba(255,255,255,0.4)', margin: '0 0 10px 0' }}>
+                FOCUS CHAMPION!
+              </h2>
+
+              <p style={{ fontSize: '1.2rem', color: 'rgba(255, 255, 255, 0.7)', fontWeight: 300, lineHeight: 1.6, marginBottom: '30px', padding: '0 15px' }}>
+                Incredible work. You stood firm, focused your mind, and blasted through <span style={{ color: '#fbbf24', fontWeight: 600 }}>10,000 points</span> of distractions. You are grounded, centered, and fully in control.
+              </p>
+
+              {/* Stats Block */}
+              <div style={{ display: 'flex', gap: '15px', justifyContent: 'center', marginBottom: '35px' }}>
+                <div style={{ flex: 1, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '15px', padding: '15px 10px' }}>
+                  <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase' }}>Distractions Blasted</div>
+                  <div style={{ fontSize: '1.8rem', color: '#fbbf24', fontWeight: 700, marginTop: '5px' }}>1,000</div>
+                </div>
+                <div style={{ flex: 1, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '15px', padding: '15px 10px' }}>
+                  <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase' }}>Mind State</div>
+                  <div style={{ fontSize: '1.6rem', color: '#10b981', fontWeight: 700, marginTop: '8px', letterSpacing: '1px' }}>CENTERED</div>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                <motion.button
+                  whileHover={{ scale: 1.03, boxShadow: '0 0 25px rgba(251, 191, 36, 0.6)' }}
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => { playSound('click', soundEnabled); setWinAcknowledged(true); setShowWinScreen(false); }}
+                  style={{ background: 'linear-gradient(135deg, #fbbf24, #f59e0b)', border: 'none', padding: '16px', borderRadius: '30px', color: '#09090b', cursor: 'pointer', outline: 'none', fontSize: '1.1rem', fontWeight: 700, letterSpacing: '1px' }}
+                >
+                  Keep Blasting Distractions
+                </motion.button>
+
+                <motion.button
+                  whileHover={{ scale: 1.03, backgroundColor: 'rgba(255,255,255,0.08)' }}
+                  whileTap={{ scale: 0.97 }}
+                  onClick={resetTimer}
+                  style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.15)', padding: '14px', borderRadius: '30px', color: 'white', cursor: 'pointer', outline: 'none', fontSize: '1rem', fontWeight: 600 }}
+                >
+                  Start New 12m Session
+                </motion.button>
               </div>
             </motion.div>
           </motion.div>
