@@ -582,7 +582,7 @@ export default function App() {
       <BurstParticles trigger={burst} colors={theme.colors} />
       <VictoryConfetti active={showWinScreen} theme={theme} />
 
-      {/* Floating Cleared Distractions (Left & Right Sides) */}
+      {/* Floating Cleared Distractions (Left & Right Sides) - Rendered as Dead Ghost SVGs directly */}
       <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 5 }}>
         <AnimatePresence>
           {clearedItems.map((item) => (
@@ -590,48 +590,76 @@ export default function App() {
               key={item.id}
               initial={{ y: '105vh', x: `${item.x}vw`, scale: 0.6, opacity: 0 }}
               animate={{ 
-                y: '-10vh', 
-                x: [ `${item.x}vw`, `${item.x + 2}vw`, `${item.x - 2}vw`, `${item.x}vw` ],
-                scale: 1, 
+                y: '-15vh', 
+                x: [ `${item.x}vw`, `${item.x + 3}vw`, `${item.x - 3}vw`, `${item.x}vw` ],
+                scale: 1.1, 
                 opacity: [0, 0.95, 0.95, 0] 
               }}
               exit={{ opacity: 0, scale: 0.8 }}
               transition={{ 
-                y: { duration: 9, ease: "linear" },
-                x: { repeat: Infinity, duration: 3.5, ease: "easeInOut" },
-                opacity: { times: [0, 0.1, 0.85, 1], duration: 9 }
+                y: { duration: 9.5, ease: "linear" },
+                x: { repeat: Infinity, duration: 4, ease: "easeInOut" },
+                opacity: { times: [0, 0.15, 0.8, 1], duration: 9.5 }
               }}
               style={{
                 position: 'absolute',
-                padding: '10px 20px',
-                borderRadius: '30px',
-                background: 'rgba(24, 24, 27, 0.6)',
-                border: `1px solid ${item.color}`,
-                boxShadow: `0 0 15px ${item.color}40, inset 0 0 10px ${item.color}20`,
-                color: '#ffffff',
-                textShadow: `0 0 10px ${item.color}`,
-                fontSize: '1rem',
-                fontWeight: 600,
-                letterSpacing: '1px',
-                backdropFilter: 'blur(8px)',
+                width: '120px',
+                height: '130px',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '12px'
+                justifyContent: 'center'
               }}
             >
-              {/* Dead Ghost SVG Icon */}
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={item.color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ filter: `drop-shadow(0 0 5px ${item.color})` }}>
-                {/* Ghost Outline */}
-                <path d="M19 11c0-3.87-3.13-7-7-7s-7 3.13-7 7v8c0 .5.2.9.5 1.2.3.3.7.5 1.1.3l1.9-1 1.9 1c.4.2.8.2 1.2 0l1.9-1 1.9 1c.4.2.8.2 1.1-.3.3-.3.5-.7.5-1.2v-8z" />
-                {/* Left Eye X */}
-                <path d="M8.5 9.5l2 2M10.5 9.5l-2 2" />
-                {/* Right Eye X */}
-                <path d="M13.5 9.5l2 2M15.5 9.5l-2 2" />
-                {/* Flat mouth */}
-                <path d="M10.5 14.5h3" />
+              {/* Entirely custom dead ghost vector SVG with word inside body */}
+              <svg width="120" height="130" viewBox="0 0 120 130" style={{ filter: `drop-shadow(0 0 12px ${item.color}cc)` }}>
+                {/* Ghost Silhouette filled with semi-transparent dark tone and outlined with glowing theme color */}
+                <path 
+                  d="M 60,15 C 95,15 110,35 110,65 V 100 C 105,95 100,95 95,100 C 90,105 85,105 80,100 C 75,95 70,95 65,100 C 60,105 55,105 50,100 C 45,95 40,95 35,100 C 30,105 25,105 20,100 C 15,95 10,95 10,95 V 65 C 10,35 25,15 60,15 Z" 
+                  fill="rgba(15, 15, 18, 0.75)" 
+                  stroke={item.color} 
+                  strokeWidth="2" 
+                />
+                
+                {/* Left Eye Dead Cross 'X' */}
+                <path d="M 38,43 L 48,53" stroke={item.color} strokeWidth="2.2" strokeLinecap="round" />
+                <path d="M 48,43 L 38,53" stroke={item.color} strokeWidth="2.2" strokeLinecap="round" />
+                
+                {/* Right Eye Dead Cross 'X' */}
+                <path d="M 72,43 L 82,53" stroke={item.color} strokeWidth="2.2" strokeLinecap="round" />
+                <path d="M 82,43 L 72,53" stroke={item.color} strokeWidth="2.2" strokeLinecap="round" />
+                
+                {/* Dead Flat Mouth */}
+                <path d="M 50,68 L 70,68" stroke={item.color} strokeWidth="2.2" strokeLinecap="round" />
+
+                {/* Strikethrough Cleared Word inside the Ghost's Belly */}
+                <text 
+                  x="60" 
+                  y="90" 
+                  textAnchor="middle" 
+                  fill="#ffffff" 
+                  fontSize="11.5px" 
+                  fontFamily="Outfit, sans-serif" 
+                  fontWeight="700" 
+                  letterSpacing="0.5px"
+                  style={{ textShadow: '0 0 5px rgba(0,0,0,0.8)' }}
+                >
+                  {item.text}
+                </text>
+                
+                {/* CLEARED text block */}
+                <text 
+                  x="60" 
+                  y="105" 
+                  textAnchor="middle" 
+                  fill="#10b981" 
+                  fontSize="8.5px" 
+                  fontFamily="Outfit, sans-serif" 
+                  fontWeight="900" 
+                  letterSpacing="1px"
+                >
+                  CLEARED
+                </text>
               </svg>
-              <span style={{ textDecoration: 'line-through', opacity: 0.6, color: item.color }}>{item.text}</span>
-              <span style={{ fontSize: '0.8rem', color: '#10b981', fontWeight: 800 }}>CLEARED</span>
             </motion.div>
           ))}
         </AnimatePresence>
