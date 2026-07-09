@@ -236,9 +236,16 @@ export default function App() {
       player.x = Math.max(15, Math.min(canvas.width - 15, clientX - rect.left));
     };
 
+    const handleCanvasClick = (e) => {
+      initAudio();
+      lasers.push({ x: player.x, y: player.y - 15, speed: 7 });
+      playSound('laser', soundEnabled);
+    };
+
     window.addEventListener('keydown', handleKey);
     canvas.addEventListener('mousemove', handleTouch);
     canvas.addEventListener('touchmove', handleTouch);
+    canvas.addEventListener('click', handleCanvasClick);
 
     const update = () => {
       // Auto shoot if timer is active
@@ -248,19 +255,21 @@ export default function App() {
         lastShot = Date.now();
       }
 
-      // Spawn Enemies (Distractions)
-      spawnTimer++;
-      if (spawnTimer > 60) {
-        const word = distractionLabels[Math.floor(Math.random() * distractionLabels.length)];
-        enemies.push({
-          x: Math.random() * (canvas.width - 60) + 30,
-          y: -20,
-          label: word,
-          speed: Math.random() * 1.5 + 1,
-          size: 15,
-          color: theme.colors[Math.floor(Math.random() * theme.colors.length)]
-        });
-        spawnTimer = 0;
+      // Spawn Enemies (Distractions) - Spawn ONLY if active or if they click to start
+      if (isActive) {
+        spawnTimer++;
+        if (spawnTimer > 45) { // Spawn slightly faster
+          const word = distractionLabels[Math.floor(Math.random() * distractionLabels.length)];
+          enemies.push({
+            x: Math.random() * (canvas.width - 60) + 30,
+            y: -20,
+            label: word,
+            speed: Math.random() * 1.5 + 1.2,
+            size: 15,
+            color: theme.colors[Math.floor(Math.random() * theme.colors.length)]
+          });
+          spawnTimer = 0;
+        }
       }
 
       // Update Lasers
@@ -314,7 +323,7 @@ export default function App() {
     const draw = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Draw Grid / Stars Background
+      // Draw Grid Background
       ctx.strokeStyle = 'rgba(255,255,255,0.03)';
       ctx.lineWidth = 1;
       for (let i = 0; i < canvas.width; i += 40) {
@@ -343,6 +352,7 @@ export default function App() {
 
       // Draw Lasers
       lasers.forEach(laser => {
+        ctx.save();
         ctx.shadowBlur = 10;
         ctx.shadowColor = theme.colors[0];
         ctx.strokeStyle = '#ffffff';
@@ -351,9 +361,11 @@ export default function App() {
         ctx.moveTo(laser.x, laser.y);
         ctx.lineTo(laser.x, laser.y - 12);
         ctx.stroke();
+        ctx.restore();
       });
 
       // Draw Player Rocket
+      ctx.save();
       ctx.shadowBlur = 15;
       ctx.shadowColor = theme.colors[1];
       ctx.fillStyle = '#ffffff';
@@ -363,9 +375,12 @@ export default function App() {
       ctx.lineTo(player.x + 14, player.y + 12);
       ctx.closePath();
       ctx.fill();
+      ctx.restore();
 
       // Rocket thruster fire
       if (isActive) {
+        ctx.save();
+        ctx.shadowBlur = 10;
         ctx.shadowColor = theme.colors[2];
         ctx.fillStyle = theme.colors[2];
         ctx.beginPath();
@@ -374,10 +389,12 @@ export default function App() {
         ctx.lineTo(player.x, player.y + 20 + Math.random() * 8);
         ctx.closePath();
         ctx.fill();
+        ctx.restore();
       }
 
       // Draw Enemies
       enemies.forEach(enemy => {
+        ctx.save();
         ctx.shadowBlur = 15;
         ctx.shadowColor = enemy.color;
         ctx.fillStyle = 'rgba(255,255,255,0.05)';
@@ -395,15 +412,17 @@ export default function App() {
         ctx.font = '11px Outfit, sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText(enemy.label, enemy.x, enemy.y + 4);
+        ctx.restore();
       });
       
       // Instruction if not active
       if (!isActive) {
         ctx.shadowBlur = 0;
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
         ctx.font = '14px Outfit, sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText("Press PLAY to start engine & shoot distractions", canvas.width / 2, canvas.height / 2);
+        ctx.fillText("Press PLAY (center bottom) to start!", canvas.width / 2, canvas.height / 2 - 20);
+        ctx.fillText("Or CLICK/TAP anywhere in grid to shoot manually", canvas.width / 2, canvas.height / 2 + 10);
       }
     };
 
@@ -420,6 +439,7 @@ export default function App() {
       window.removeEventListener('keydown', handleKey);
       canvas.removeEventListener('mousemove', handleTouch);
       canvas.removeEventListener('touchmove', handleTouch);
+      canvas.removeEventListener('click', handleCanvasClick);
     };
   }, [gameMode, isActive, theme, soundEnabled]);
 
