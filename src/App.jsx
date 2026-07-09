@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, Pause, RotateCcw, Volume2, VolumeX, Sparkles, Activity, Heart, X, ChevronRight, ChevronLeft } from 'lucide-react';
+import { Play, Pause, RotateCcw, Volume2, VolumeX, Sparkles, Activity, Heart, X, ChevronRight, ChevronLeft, Rocket, Target } from 'lucide-react';
 import './index.css';
 
 const FOCUS_TIME = 12 * 60;
@@ -48,6 +48,22 @@ const playSound = (type, volumeEnabled) => {
     osc.frequency.setValueAtTime(400, audioCtx.currentTime);
     osc.frequency.linearRampToValueAtTime(800, audioCtx.currentTime + 0.3);
     gainNode.gain.setValueAtTime(0.05, audioCtx.currentTime);
+    gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.3);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.3);
+  } else if (type === 'laser') {
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(200, audioCtx.currentTime + 0.1);
+    gainNode.gain.setValueAtTime(0.03, audioCtx.currentTime);
+    gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.1);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.1);
+  } else if (type === 'explosion') {
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(180, audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.3);
+    gainNode.gain.setValueAtTime(0.12, audioCtx.currentTime);
     gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.3);
     osc.start();
     osc.stop(audioCtx.currentTime + 0.3);
@@ -148,6 +164,8 @@ const groundingSteps = [
   }
 ];
 
+const distractionLabels = ["Worry", "Stress", "Doubt", "Noise", "Anxiety", "Fear", "Overthink", "Fatigue", "Lag", "Clutter"];
+
 export default function App() {
   const [timeLeft, setTimeLeft] = useState(FOCUS_TIME);
   const [isActive, setIsActive] = useState(false);
@@ -158,9 +176,15 @@ export default function App() {
   const [burst, setBurst] = useState(false);
   const theme = themes[themeIndex];
 
-  // Grounding Tool State
+  // Mode States
   const [showGrounding, setShowGrounding] = useState(false);
   const [groundingIndex, setGroundingIndex] = useState(0);
+  const [gameMode, setGameMode] = useState(false);
+
+  // Game Score
+  const [score, setScore] = useState(0);
+
+  const canvasRef = useRef(null);
 
   useEffect(() => {
     const handleMouseMove = (e) => setMousePos({ x: e.clientX, y: e.clientY });
@@ -168,6 +192,7 @@ export default function App() {
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
 
+  // Timer interval
   useEffect(() => {
     let interval = null;
     if (isActive && timeLeft > 0) {
@@ -184,6 +209,227 @@ export default function App() {
     return () => clearInterval(interval);
   }, [isActive, timeLeft, soundEnabled]);
 
+  // Gamified Focus Blaster Loop
+  useEffect(() => {
+    if (!gameMode) return;
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    let animationFrameId;
+
+    let player = { x: canvas.width / 2, y: canvas.height - 40, width: 30, height: 30, speed: 8 };
+    let lasers = [];
+    let enemies = [];
+    let particles = [];
+    let lastShot = 0;
+    let spawnTimer = 0;
+
+    const handleKey = (e) => {
+      if (e.key === 'ArrowLeft' || e.key === 'a') player.x = Math.max(15, player.x - player.speed * 2);
+      if (e.key === 'ArrowRight' || e.key === 'd') player.x = Math.min(canvas.width - 15, player.x + player.speed * 2);
+    };
+
+    const handleTouch = (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      player.x = Math.max(15, Math.min(canvas.width - 15, clientX - rect.left));
+    };
+
+    window.addEventListener('keydown', handleKey);
+    canvas.addEventListener('mousemove', handleTouch);
+    canvas.addEventListener('touchmove', handleTouch);
+
+    const update = () => {
+      // Auto shoot if timer is active
+      if (isActive && Date.now() - lastShot > 250) {
+        lasers.push({ x: player.x, y: player.y - 15, speed: 7 });
+        playSound('laser', soundEnabled);
+        lastShot = Date.now();
+      }
+
+      // Spawn Enemies (Distractions)
+      spawnTimer++;
+      if (spawnTimer > 60) {
+        const word = distractionLabels[Math.floor(Math.random() * distractionLabels.length)];
+        enemies.push({
+          x: Math.random() * (canvas.width - 60) + 30,
+          y: -20,
+          label: word,
+          speed: Math.random() * 1.5 + 1,
+          size: 15,
+          color: theme.colors[Math.floor(Math.random() * theme.colors.length)]
+        });
+        spawnTimer = 0;
+      }
+
+      // Update Lasers
+      lasers.forEach(laser => laser.y -= laser.speed);
+      lasers = lasers.filter(laser => laser.y > 0);
+
+      // Update Enemies
+      enemies.forEach(enemy => {
+        enemy.y += enemy.speed;
+      });
+
+      // Filter out enemies that reach bottom (recharges shield without losing game)
+      enemies = enemies.filter(enemy => {
+        if (enemy.y > canvas.height) {
+          // Play soft background blast to indicate it passed
+          return false;
+        }
+        return true;
+      });
+
+      // Collisions
+      lasers.forEach((laser, lIdx) => {
+        enemies.forEach((enemy, eIdx) => {
+          const dist = Math.hypot(laser.x - enemy.x, laser.y - enemy.y);
+          if (dist < enemy.size + 15) {
+            // Collision detected!
+            playSound('explosion', soundEnabled);
+            setScore(s => s + 10);
+            
+            // Spawn explosion particles
+            for (let i = 0; i < 15; i++) {
+              particles.push({
+                x: enemy.x,
+                y: enemy.y,
+                vx: (Math.random() - 0.5) * 6,
+                vy: (Math.random() - 0.5) * 6,
+                size: Math.random() * 4 + 1,
+                alpha: 1,
+                color: enemy.color
+              });
+            }
+
+            lasers.splice(lIdx, 1);
+            enemies.splice(eIdx, 1);
+          }
+        });
+      });
+
+      // Update particles
+      particles.forEach(p => {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.alpha -= 0.03;
+      });
+      particles = particles.filter(p => p.alpha > 0);
+    };
+
+    const draw = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Draw Grid / Stars Background
+      ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+      ctx.lineWidth = 1;
+      for (let i = 0; i < canvas.width; i += 40) {
+        ctx.beginPath();
+        ctx.moveTo(i, 0);
+        ctx.lineTo(i, canvas.height);
+        ctx.stroke();
+      }
+      for (let i = 0; i < canvas.height; i += 40) {
+        ctx.beginPath();
+        ctx.moveTo(0, i);
+        ctx.lineTo(canvas.width, i);
+        ctx.stroke();
+      }
+
+      // Draw Particles
+      particles.forEach(p => {
+        ctx.save();
+        ctx.globalAlpha = p.alpha;
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      });
+
+      // Draw Lasers (Glowing lines)
+      lasers.forEach(laser => {
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = theme.colors[0];
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(laser.x, laser.y);
+        ctx.lineTo(laser.x, laser.y - 12);
+        ctx.stroke();
+      });
+
+      // Draw Player Rocket (Sleek sci-fi triangle)
+      ctx.shadowBlur = 15;
+      ctx.shadowColor = theme.colors[1];
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.moveTo(player.x, player.y - 18);
+      ctx.lineTo(player.x - 14, player.y + 12);
+      ctx.lineTo(player.x + 14, player.y + 12);
+      ctx.closePath();
+      ctx.fill();
+
+      // Rocket thruster fire
+      if (isActive) {
+        ctx.shadowColor = theme.colors[2];
+        ctx.fillStyle = theme.colors[2];
+        ctx.beginPath();
+        ctx.moveTo(player.x - 6, player.y + 14);
+        ctx.lineTo(player.x + 6, player.y + 14);
+        ctx.lineTo(player.x, player.y + 20 + Math.random() * 8);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      // Draw Enemies (Distractions)
+      enemies.forEach(enemy => {
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = enemy.color;
+        ctx.fillStyle = 'rgba(255,255,255,0.05)';
+        ctx.strokeStyle = enemy.color;
+        ctx.lineWidth = 2;
+        
+        ctx.beginPath();
+        ctx.arc(enemy.x, enemy.y, enemy.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // Label Text
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '11px Outfit, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(enemy.label, enemy.x, enemy.y + 4);
+      });
+      
+      // Instruction if not active
+      if (!isActive) {
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+        ctx.font = '14px Outfit, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText("Press PLAY to start engine & shoot distractions", canvas.width / 2, canvas.height / 2);
+      }
+    };
+
+    const loop = () => {
+      update();
+      draw();
+      animationFrameId = requestAnimationFrame(loop);
+    };
+
+    loop();
+
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+      window.removeEventListener('keydown', handleKey);
+      canvas.removeEventListener('mousemove', handleTouch);
+      canvas.removeEventListener('touchmove', handleTouch);
+    };
+  }, [gameMode, isActive, theme, soundEnabled]);
+
   const toggleTimer = () => {
     playSound('click', soundEnabled);
     setIsActive(!isActive);
@@ -193,6 +439,7 @@ export default function App() {
     playSound('click', soundEnabled);
     setIsActive(false);
     setTimeLeft(FOCUS_TIME);
+    setScore(0);
   };
 
   const toggleSound = () => {
@@ -240,14 +487,14 @@ export default function App() {
       <motion.div 
         initial={{ y: -50, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        style={{ position: 'absolute', top: '40px', display: 'flex', gap: '20px', zIndex: 20 }}
+        style={{ position: 'absolute', top: '40px', display: 'flex', gap: '15px', zIndex: 20 }}
       >
         <motion.button whileHover={{ scale: 1.1, backgroundColor: 'rgba(255,255,255,0.1)' }} whileTap={{ scale: 0.9 }} onClick={toggleSound} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', padding: '12px', borderRadius: '50%', color: 'white', cursor: 'pointer', backdropFilter: 'blur(10px)', outline: 'none' }}>
           {soundEnabled ? <Volume2 size={20} /> : <VolumeX size={20} />}
         </motion.button>
         
-        <motion.button whileHover={{ scale: 1.05, backgroundColor: 'rgba(255,255,255,0.1)' }} whileTap={{ scale: 0.95 }} onClick={() => { playSound('click', soundEnabled); setTimeLeft(FOCUS_TIME); }} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', padding: '12px 24px', borderRadius: '30px', color: 'white', cursor: 'pointer', backdropFilter: 'blur(10px)', display: 'flex', gap: '10px', alignItems: 'center', outline: 'none' }}>
-          <Activity size={18} /> Deep Focus
+        <motion.button whileHover={{ scale: 1.05, backgroundColor: 'rgba(255,255,255,0.1)' }} whileTap={{ scale: 0.95 }} onClick={() => { playSound('click', soundEnabled); setGameMode(!gameMode); }} style={{ background: gameMode ? `linear-gradient(135deg, ${theme.colors[0]}, ${theme.colors[1]})` : 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', padding: '12px 24px', borderRadius: '30px', color: 'white', cursor: 'pointer', backdropFilter: 'blur(10px)', display: 'flex', gap: '10px', alignItems: 'center', outline: 'none' }}>
+          {gameMode ? <Target size={18} /> : <Rocket size={18} />} {gameMode ? "Focus Ring Mode" : "Focus Blaster Mode"}
         </motion.button>
 
         <motion.button whileHover={{ scale: 1.05, backgroundColor: 'rgba(255,255,255,0.1)' }} whileTap={{ scale: 0.95 }} onClick={() => { playSound('click', soundEnabled); setShowGrounding(true); setGroundingIndex(0); }} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', padding: '12px 24px', borderRadius: '30px', color: '#f43f5e', cursor: 'pointer', backdropFilter: 'blur(10px)', display: 'flex', gap: '10px', alignItems: 'center', outline: 'none' }}>
@@ -255,71 +502,102 @@ export default function App() {
         </motion.button>
       </motion.div>
 
-      {/* Main Focus Ring */}
-      <motion.div 
-        initial={{ scale: 0.8, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ type: 'spring', damping: 20 }}
-        style={{ position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center' }}
-      >
-        <motion.div 
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          style={{ position: 'relative', width: '400px', height: '400px', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer' }}
-          onClick={toggleTimer}
-        >
-          <svg width="400" height="400" viewBox="0 0 400 400" style={{ position: 'absolute', transform: 'rotate(-90deg)' }}>
-            <circle cx="200" cy="200" r="180" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="6" />
-            <motion.circle 
-              cx="200" cy="200" r="180" 
-              fill="none" 
-              stroke="url(#gradientMain)" 
-              strokeWidth="8"
-              strokeLinecap="round"
-              strokeDasharray={strokeLength}
-              animate={{ strokeDashoffset: strokeLength - (progress * strokeLength) }}
-              transition={{ duration: 1, ease: "linear" }}
-              style={{ filter: `drop-shadow(0 0 15px ${theme.colors[2]}80)` }}
-            />
-            <defs>
-              <linearGradient id="gradientMain" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor={theme.colors[0]} />
-                <stop offset="50%" stopColor={theme.colors[1]} />
-                <stop offset="100%" stopColor={theme.colors[2]} />
-              </linearGradient>
-            </defs>
-          </svg>
-
-          {/* Time Counter */}
-          <AnimatePresence mode="popLayout">
-            <motion.div
-              key={timeLeft}
-              initial={{ y: 15, opacity: 0, filter: 'blur(4px)' }}
-              animate={{ y: 0, opacity: 1, filter: 'blur(0px)' }}
-              exit={{ y: -15, opacity: 0, filter: 'blur(4px)' }}
-              transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-              style={{ fontSize: '6.5rem', fontWeight: 200, letterSpacing: '6px', color: '#ffffff', textShadow: '0 0 30px rgba(255,255,255,0.3)', position: 'absolute' }}
-            >
+      {/* Main Area */}
+      <div style={{ position: 'relative', width: '100%', maxWidth: '500px', display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 10 }}>
+        
+        {/* Timer display for Game Mode */}
+        {gameMode && (
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            style={{ marginBottom: '15px', display: 'flex', justifyContent: 'space-between', width: '400px', padding: '0 10px', alignItems: 'center' }}
+          >
+            <div style={{ fontSize: '2.5rem', fontWeight: 200, color: 'white', letterSpacing: '2px', textShadow: '0 0 10px rgba(255,255,255,0.2)' }}>
               {formatTime(timeLeft)}
+            </div>
+            <div style={{ fontSize: '1rem', color: theme.colors[0], fontWeight: 600, letterSpacing: '1px' }}>
+              DISTRACTIONS CLEARED: <span style={{ color: '#fff', fontSize: '1.2rem' }}>{score}</span>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Screen Content Toggle */}
+        <AnimatePresence mode="wait">
+          {!gameMode ? (
+            <motion.div
+              key="timer-circle"
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              transition={{ type: 'spring', damping: 20 }}
+              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}
+            >
+              {/* Focus Ring Graphic */}
+              <motion.div 
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                style={{ position: 'relative', width: '400px', height: '400px', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer' }}
+                onClick={toggleTimer}
+              >
+                <svg width="400" height="400" viewBox="0 0 400 400" style={{ position: 'absolute', transform: 'rotate(-90deg)' }}>
+                  <circle cx="200" cy="200" r="180" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="6" />
+                  <motion.circle 
+                    cx="200" cy="200" r="180" 
+                    fill="none" 
+                    stroke="url(#gradientMain)" 
+                    strokeWidth="8"
+                    strokeLinecap="round"
+                    strokeDasharray={strokeLength}
+                    animate={{ strokeDashoffset: strokeLength - (progress * strokeLength) }}
+                    transition={{ duration: 1, ease: "linear" }}
+                    style={{ filter: `drop-shadow(0 0 15px ${theme.colors[2]}80)` }}
+                  />
+                  <defs>
+                    <linearGradient id="gradientMain" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor={theme.colors[0]} />
+                      <stop offset="50%" stopColor={theme.colors[1]} />
+                      <stop offset="100%" stopColor={theme.colors[2]} />
+                    </linearGradient>
+                  </defs>
+                </svg>
+
+                <div style={{ fontSize: '6.5rem', fontWeight: 200, letterSpacing: '6px', color: '#ffffff', textShadow: '0 0 30px rgba(255,255,255,0.3)', position: 'absolute' }}>
+                  {formatTime(timeLeft)}
+                </div>
+                
+                {isActive && (
+                  <motion.div 
+                    animate={{ scale: [1, 1.15, 1], opacity: [0, 0.15, 0] }}
+                    transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
+                    style={{ position: 'absolute', inset: 30, border: `2px solid ${theme.colors[1]}`, borderRadius: '50%', pointerEvents: 'none' }}
+                  />
+                )}
+              </motion.div>
             </motion.div>
-          </AnimatePresence>
-          
-          {/* Inner Breathing Ring */}
-          {isActive && (
-            <motion.div 
-              animate={{ scale: [1, 1.15, 1], opacity: [0, 0.15, 0] }}
-              transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
-              style={{ position: 'absolute', inset: 30, border: `2px solid ${theme.colors[1]}`, borderRadius: '50%', pointerEvents: 'none' }}
-            />
+          ) : (
+            <motion.div
+              key="game-canvas"
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              style={{ position: 'relative', width: '400px', height: '420px', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '20px', overflow: 'hidden', background: 'rgba(9,9,11,0.6)', backdropFilter: 'blur(10px)', boxShadow: '0 10px 40px rgba(0,0,0,0.6)' }}
+            >
+              <canvas 
+                ref={canvasRef} 
+                width="400" 
+                height="420" 
+                style={{ display: 'block', width: '100%', height: '100%', cursor: 'none' }}
+              />
+            </motion.div>
           )}
-        </motion.div>
+        </AnimatePresence>
 
         {/* Floating Controls */}
         <motion.div 
           initial={{ y: 30, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.3, type: 'spring' }}
-          style={{ marginTop: '70px', display: 'flex', gap: '35px', alignItems: 'center' }}
+          style={{ marginTop: '50px', display: 'flex', gap: '35px', alignItems: 'center' }}
         >
           <motion.button
             whileHover={{ scale: 1.1, backgroundColor: 'rgba(255,255,255,0.1)', rotate: -20 }}
@@ -356,7 +634,7 @@ export default function App() {
         </motion.div>
         
         {/* Helper State Text */}
-        <motion.div style={{ marginTop: '50px', height: '30px' }}>
+        <motion.div style={{ marginTop: '35px', height: '24px' }}>
           <AnimatePresence mode="wait">
             <motion.p
               key={isActive ? 'active' : 'inactive'}
@@ -364,28 +642,22 @@ export default function App() {
               animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
               exit={{ opacity: 0, y: -15, filter: 'blur(4px)' }}
               transition={{ duration: 0.3 }}
-              style={{ fontSize: '1.2rem', color: 'rgba(255,255,255,0.6)', fontWeight: 300, letterSpacing: '3px' }}
+              style={{ fontSize: '1.1rem', color: 'rgba(255,255,255,0.6)', fontWeight: 300, letterSpacing: '3px' }}
             >
-              {isActive ? "Breathe in. Breathe out." : "Take control. Start when ready."}
+              {gameMode 
+                ? (isActive ? "Move mouse/finger to steer rocket!" : "Engines off. Press Play to start.")
+                : (isActive ? "Breathe in. Breathe out." : "Take control. Start when ready.")}
             </motion.p>
           </AnimatePresence>
         </motion.div>
         
         {/* Theme indicator */}
-        <motion.div style={{ marginTop: '20px', height: '20px' }}>
-            <AnimatePresence mode="wait">
-              <motion.span
-                key={theme.name}
-                initial={{ opacity: 0, y: -5 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 5 }}
-                style={{ fontSize: '0.85rem', color: theme.colors[0], fontWeight: 600, letterSpacing: '2px', textTransform: 'uppercase' }}
-              >
-                {theme.name} Theme
-              </motion.span>
-            </AnimatePresence>
-        </motion.div>
-      </motion.div>
+        <div style={{ marginTop: '15px' }}>
+            <span style={{ fontSize: '0.8rem', color: theme.colors[0], fontWeight: 600, letterSpacing: '2px', textTransform: 'uppercase' }}>
+              {theme.name} Theme
+            </span>
+        </div>
+      </div>
 
       {/* Grounding Check-in Modal Overlay */}
       <AnimatePresence>
