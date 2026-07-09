@@ -688,7 +688,7 @@ export default function App() {
         </motion.button>
         
         <motion.button whileHover={{ scale: 1.05, backgroundColor: 'rgba(255,255,255,0.1)' }} whileTap={{ scale: 0.95 }} onClick={() => { playSound('click', soundEnabled); setGameMode(!gameMode); }} style={{ background: gameMode ? `linear-gradient(135deg, ${theme.colors[0]}, ${theme.colors[1]})` : 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', padding: '12px 24px', borderRadius: '30px', color: 'white', cursor: 'pointer', backdropFilter: 'blur(10px)', display: 'flex', gap: '10px', alignItems: 'center', outline: 'none' }}>
-          {gameMode ? <Target size={18} /> : <Rocket size={18} />} {gameMode ? "Focus Ring Mode" : "Focus Blaster Mode"}
+          {gameMode ? <Target size={18} /> : <Rocket size={18} />} {gameMode ? "Focus Ring Mode" : "Play"}
         </motion.button>
 
         <motion.button whileHover={{ scale: 1.05, backgroundColor: 'rgba(255,255,255,0.1)' }} whileTap={{ scale: 0.95 }} onClick={() => { playSound('click', soundEnabled); setShowGrounding(true); setGroundingIndex(0); }} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', padding: '12px 24px', borderRadius: '30px', color: '#f43f5e', cursor: 'pointer', backdropFilter: 'blur(10px)', display: 'flex', gap: '10px', alignItems: 'center', outline: 'none' }}>
