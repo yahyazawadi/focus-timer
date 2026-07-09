@@ -332,12 +332,18 @@ export default function App() {
         spawnTimer++;
         if (spawnTimer > 45) {
           const word = distractionLabels[Math.floor(Math.random() * distractionLabels.length)];
+          
+          // Measure word width on the canvas to set correct circle size dynamically
+          ctx.font = '11px Outfit, sans-serif';
+          const textWidth = ctx.measureText(word).width;
+          const radius = textWidth / 2 + 10; // 10px padding!
+
           enemies.push({
-            x: Math.random() * (canvas.width - 60) + 30,
-            y: -20,
+            x: Math.random() * (canvas.width - radius * 2 - 20) + radius + 10,
+            y: -radius,
             label: word,
             speed: Math.random() * 1.5 + 1.2,
-            size: 15,
+            size: radius,
             color: theme.colors[Math.floor(Math.random() * theme.colors.length)]
           });
           spawnTimer = 0;
@@ -354,7 +360,7 @@ export default function App() {
       });
 
       // Filter out enemies that reach bottom
-      enemies = enemies.filter(enemy => enemy.y <= canvas.height);
+      enemies = enemies.filter(enemy => enemy.y <= canvas.height + enemy.size);
 
       // Collisions
       lasers.forEach((laser, lIdx) => {
@@ -668,7 +674,7 @@ export default function App() {
       {/* Ambient Orbs */}
       <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: 'none' }}>
         <motion.div animate={{ scale: [1, 1.1, 1], opacity: [0.1, 0.2, 0.1] }} transition={{ duration: 15, repeat: Infinity, ease: 'easeInOut' }} style={{ position: 'absolute', top: '5%', left: '15%', width: '40vw', height: '40vw', borderRadius: '50%', background: `radial-gradient(circle, ${theme.colors[0]}40, transparent)`, filter: 'blur(100px)' }} />
-        <motion.div animate={{ scale: [1, 1.2, 1], opacity: [0.1, 0.25, 0.1] }} transition={{ duration: 20, repeat: Infinity, delay: 2, ease: 'easeInOut' }} style={{ position: 'absolute', bottom: '5%', right: '15%', width: '45vw', height: '45vw', borderRadius: '50%', background: `radial-gradient(circle, ${theme.colors[2]}40, transparent)`, filter: 'blur(120px)' }} />
+        <motion.div animate={{ scale: [1, 1.2, 1], opacity: [0.1, 0.25, 0.1] }} transition={{ duration: 20, repeat: Infinity, delay: 2, ease: 'easeInOut' }} style={{ position: 'absolute', bottom: '5%', right: '15%', width: '45vw', height: '45vw', borderRadius: '50%', background: `radial-gradient(circle, ${theme.colors[2]}40, transparent)', filter: 'blur(120px)' }} />
       </div>
 
       {/* Utilities Bar */}
