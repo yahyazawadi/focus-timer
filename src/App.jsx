@@ -582,7 +582,7 @@ export default function App() {
       <BurstParticles trigger={burst} colors={theme.colors} />
       <VictoryConfetti active={showWinScreen} theme={theme} />
 
-      {/* Floating Cleared Distractions (Left & Right Sides) - Rendered as Dead Ghost SVGs directly */}
+      {/* Floating Cleared Distractions (Left & Right Sides) - Rendered as Elongated Dead Ghost SVGs */}
       <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 5 }}>
         <AnimatePresence>
           {clearedItems.map((item) => (
@@ -590,31 +590,31 @@ export default function App() {
               key={item.id}
               initial={{ y: '105vh', x: `${item.x}vw`, scale: 0.6, opacity: 0 }}
               animate={{ 
-                y: '-15vh', 
+                y: '-20vh', 
                 x: [ `${item.x}vw`, `${item.x + 3}vw`, `${item.x - 3}vw`, `${item.x}vw` ],
-                scale: 1.1, 
+                scale: 1.15, 
                 opacity: [0, 0.95, 0.95, 0] 
               }}
               exit={{ opacity: 0, scale: 0.8 }}
               transition={{ 
-                y: { duration: 9.5, ease: "linear" },
-                x: { repeat: Infinity, duration: 4, ease: "easeInOut" },
-                opacity: { times: [0, 0.15, 0.8, 1], duration: 9.5 }
+                y: { duration: 10, ease: "linear" },
+                x: { repeat: Infinity, duration: 4.5, ease: "easeInOut" },
+                opacity: { times: [0, 0.15, 0.8, 1], duration: 10 }
               }}
               style={{
                 position: 'absolute',
                 width: '120px',
-                height: '130px',
+                height: '160px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center'
               }}
             >
-              {/* Entirely custom dead ghost vector SVG with word inside body */}
-              <svg width="120" height="130" viewBox="0 0 120 130" style={{ filter: `drop-shadow(0 0 12px ${item.color}cc)` }}>
-                {/* Ghost Silhouette filled with semi-transparent dark tone and outlined with glowing theme color */}
+              {/* Taller/longer dead ghost vector SVG with word inside body */}
+              <svg width="120" height="160" viewBox="0 0 120 160" style={{ filter: `drop-shadow(0 0 12px ${item.color}cc)` }}>
+                {/* Ghost Silhouette elongated vertically (V 130 instead of 100) */}
                 <path 
-                  d="M 60,15 C 95,15 110,35 110,65 V 100 C 105,95 100,95 95,100 C 90,105 85,105 80,100 C 75,95 70,95 65,100 C 60,105 55,105 50,100 C 45,95 40,95 35,100 C 30,105 25,105 20,100 C 15,95 10,95 10,95 V 65 C 10,35 25,15 60,15 Z" 
+                  d="M 60,15 C 95,15 110,35 110,65 V 130 C 105,125 100,125 95,130 C 90,135 85,135 80,130 C 75,125 70,125 65,130 C 60,135 55,135 50,130 C 45,125 40,125 35,130 C 30,135 25,135 20,130 C 15,125 10,125 10,125 V 65 C 10,35 25,15 60,15 Z" 
                   fill="rgba(15, 15, 18, 0.75)" 
                   stroke={item.color} 
                   strokeWidth="2" 
@@ -634,10 +634,10 @@ export default function App() {
                 {/* Strikethrough Cleared Word inside the Ghost's Belly */}
                 <text 
                   x="60" 
-                  y="90" 
+                  y="102" 
                   textAnchor="middle" 
                   fill="#ffffff" 
-                  fontSize="11.5px" 
+                  fontSize="12px" 
                   fontFamily="Outfit, sans-serif" 
                   fontWeight="700" 
                   letterSpacing="0.5px"
@@ -649,10 +649,10 @@ export default function App() {
                 {/* CLEARED text block */}
                 <text 
                   x="60" 
-                  y="105" 
+                  y="118" 
                   textAnchor="middle" 
                   fill="#10b981" 
-                  fontSize="8.5px" 
+                  fontSize="9px" 
                   fontFamily="Outfit, sans-serif" 
                   fontWeight="900" 
                   letterSpacing="1px"
