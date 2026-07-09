@@ -181,9 +181,9 @@ export default function App() {
   const [groundingIndex, setGroundingIndex] = useState(0);
   const [gameMode, setGameMode] = useState(false);
 
-  // Game Score & Logs
+  // Game Score & Cleared Items lists
   const [score, setScore] = useState(0);
-  const [clearedLog, setClearedLog] = useState([]);
+  const [clearedItems, setClearedItems] = useState([]);
 
   const canvasRef = useRef(null);
 
@@ -293,14 +293,21 @@ export default function App() {
             playSound('explosion', soundEnabled);
             setScore(s => s + 10);
             
-            // Add to cleared log feed
-            const label = enemy.label;
-            const color = enemy.color;
-            const timeString = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-            setClearedLog(prev => [
-              { id: Math.random(), text: label, color: color, time: timeString },
-              ...prev.slice(0, 5) // Keep last 6 items
-            ]);
+            // Add to cleared items (floating side feedback)
+            const side = Math.random() > 0.5 ? 'left' : 'right';
+            const minX = side === 'left' ? 4 : 76;
+            const maxX = side === 'left' ? 18 : 90;
+            const xVal = Math.random() * (maxX - minX) + minX;
+
+            setClearedItems(prev => [
+              ...prev,
+              {
+                id: Date.now() + Math.random(),
+                text: enemy.label,
+                x: xVal,
+                color: enemy.color
+              }
+            ].slice(-15)); // Keep max 15 floating items at once
 
             // Spawn explosion particles
             for (let i = 0; i < 15; i++) {
@@ -463,7 +470,7 @@ export default function App() {
     setIsActive(false);
     setTimeLeft(FOCUS_TIME);
     setScore(0);
-    setClearedLog([]);
+    setClearedItems([]);
   };
 
   const toggleSound = () => {
@@ -501,6 +508,50 @@ export default function App() {
       <Particles theme={theme} />
       <BurstParticles trigger={burst} colors={theme.colors} />
 
+      {/* Floating Cleared Distractions (Left & Right Sides) */}
+      <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 5 }}>
+        <AnimatePresence>
+          {clearedItems.map((item) => (
+            <motion.div
+              key={item.id}
+              initial={{ y: '105vh', x: `${item.x}vw`, scale: 0.6, opacity: 0 }}
+              animate={{ 
+                y: '-10vh', 
+                x: [ `${item.x}vw`, `${item.x + 2}vw`, `${item.x - 2}vw`, `${item.x}vw` ],
+                scale: 1, 
+                opacity: [0, 0.95, 0.95, 0] 
+              }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              transition={{ 
+                y: { duration: 9, ease: "linear" },
+                x: { repeat: Infinity, duration: 3.5, ease: "easeInOut" },
+                opacity: { times: [0, 0.1, 0.85, 1], duration: 9 }
+              }}
+              style={{
+                position: 'absolute',
+                padding: '10px 20px',
+                borderRadius: '30px',
+                background: 'rgba(24, 24, 27, 0.6)',
+                border: `1px solid ${item.color}`,
+                boxShadow: `0 0 15px ${item.color}40, inset 0 0 10px ${item.color}20`,
+                color: '#ffffff',
+                textShadow: `0 0 10px ${item.color}`,
+                fontSize: '1rem',
+                fontWeight: 600,
+                letterSpacing: '1px',
+                backdropFilter: 'blur(8px)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              <span style={{ textDecoration: 'line-through', opacity: 0.6, color: item.color }}>{item.text}</span>
+              <span style={{ fontSize: '0.8rem', color: '#10b981', fontWeight: 800 }}>CLEARED</span>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
+
       {/* Ambient Orbs */}
       <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: 'none' }}>
         <motion.div animate={{ scale: [1, 1.1, 1], opacity: [0.1, 0.2, 0.1] }} transition={{ duration: 15, repeat: Infinity, ease: 'easeInOut' }} style={{ position: 'absolute', top: '5%', left: '15%', width: '40vw', height: '40vw', borderRadius: '50%', background: `radial-gradient(circle, ${theme.colors[0]}40, transparent)`, filter: 'blur(100px)' }} />
@@ -526,216 +577,146 @@ export default function App() {
         </motion.button>
       </motion.div>
 
-      {/* Main Layout Area (supporting Sidebar on the side) */}
-      <div style={{ display: 'flex', gap: '40px', alignItems: 'center', justifyContent: 'center', zIndex: 10, width: '100%', maxWidth: '850px' }}>
+      {/* Main Area */}
+      <div style={{ position: 'relative', width: '100%', maxWidth: '500px', display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 10 }}>
         
-        {/* Main Content (Timer/Canvas + Controls) */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '400px' }}>
-          
-          {/* Timer display for Game Mode */}
-          {gameMode && (
+        {/* Timer display for Game Mode */}
+        {gameMode && (
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            style={{ marginBottom: '15px', display: 'flex', justifyContent: 'space-between', width: '400px', padding: '0 10px', alignItems: 'center' }}
+          >
+            <div style={{ fontSize: '2.5rem', fontWeight: 200, color: 'white', letterSpacing: '2px', textShadow: '0 0 10px rgba(255,255,255,0.2)' }}>
+              {formatTime(timeLeft)}
+            </div>
+            <div style={{ fontSize: '1rem', color: theme.colors[0], fontWeight: 600, letterSpacing: '1px' }}>
+              DISTRACTIONS CLEARED: <span style={{ color: '#fff', fontSize: '1.2rem' }}>{score}</span>
+            </div>
+          </motion.div>
+        )}
+
+        <div style={{ position: 'relative', width: '400px', height: '420px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+          {/* Focus Ring Graphic */}
+          <div style={{ display: !gameMode ? 'block' : 'none', position: 'absolute', inset: 0 }}>
             <motion.div 
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              style={{ marginBottom: '15px', display: 'flex', justifyContent: 'space-between', width: '400px', padding: '0 10px', alignItems: 'center' }}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              style={{ position: 'relative', width: '400px', height: '400px', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer' }}
+              onClick={toggleTimer}
             >
-              <div style={{ fontSize: '2.5rem', fontWeight: 200, color: 'white', letterSpacing: '2px', textShadow: '0 0 10px rgba(255,255,255,0.2)' }}>
+              <svg width="400" height="400" viewBox="0 0 400 400" style={{ position: 'absolute', transform: 'rotate(-90deg)' }}>
+                <circle cx="200" cy="200" r="180" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="6" />
+                <motion.circle 
+                  cx="200" cy="200" r="180" 
+                  fill="none" 
+                  stroke="url(#gradientMain)" 
+                  strokeWidth="8"
+                  strokeLinecap="round"
+                  strokeDasharray={strokeLength}
+                  animate={{ strokeDashoffset: strokeLength - (progress * strokeLength) }}
+                  transition={{ duration: 1, ease: "linear" }}
+                  style={{ filter: `drop-shadow(0 0 15px ${theme.colors[2]}80)` }}
+                />
+                <defs>
+                  <linearGradient id="gradientMain" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor={theme.colors[0]} />
+                    <stop offset="50%" stopColor={theme.colors[1]} />
+                    <stop offset="100%" stopColor={theme.colors[2]} />
+                  </linearGradient>
+                </defs>
+              </svg>
+
+              <div style={{ fontSize: '6.5rem', fontWeight: 200, letterSpacing: '6px', color: '#ffffff', textShadow: '0 0 30px rgba(255,255,255,0.3)', position: 'absolute' }}>
                 {formatTime(timeLeft)}
               </div>
-              <div style={{ fontSize: '1rem', color: theme.colors[0], fontWeight: 600, letterSpacing: '1px' }}>
-                DISTRACTIONS CLEARED: <span style={{ color: '#fff', fontSize: '1.2rem' }}>{score}</span>
-              </div>
+              
+              {isActive && (
+                <motion.div 
+                  animate={{ scale: [1, 1.15, 1], opacity: [0, 0.15, 0] }}
+                  transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
+                  style={{ position: 'absolute', inset: 30, border: `2px solid ${theme.colors[1]}`, borderRadius: '50%', pointerEvents: 'none' }}
+                />
+              )}
             </motion.div>
-          )}
-
-          <div style={{ position: 'relative', width: '400px', height: '420px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-            {/* Focus Ring Graphic */}
-            <div style={{ display: !gameMode ? 'block' : 'none', position: 'absolute', inset: 0 }}>
-              <motion.div 
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                style={{ position: 'relative', width: '400px', height: '400px', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer' }}
-                onClick={toggleTimer}
-              >
-                <svg width="400" height="400" viewBox="0 0 400 400" style={{ position: 'absolute', transform: 'rotate(-90deg)' }}>
-                  <circle cx="200" cy="200" r="180" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="6" />
-                  <motion.circle 
-                    cx="200" cy="200" r="180" 
-                    fill="none" 
-                    stroke="url(#gradientMain)" 
-                    strokeWidth="8"
-                    strokeLinecap="round"
-                    strokeDasharray={strokeLength}
-                    animate={{ strokeDashoffset: strokeLength - (progress * strokeLength) }}
-                    transition={{ duration: 1, ease: "linear" }}
-                    style={{ filter: `drop-shadow(0 0 15px ${theme.colors[2]}80)` }}
-                  />
-                  <defs>
-                    <linearGradient id="gradientMain" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stopColor={theme.colors[0]} />
-                      <stop offset="50%" stopColor={theme.colors[1]} />
-                      <stop offset="100%" stopColor={theme.colors[2]} />
-                    </linearGradient>
-                  </defs>
-                </svg>
-
-                <div style={{ fontSize: '6.5rem', fontWeight: 200, letterSpacing: '6px', color: '#ffffff', textShadow: '0 0 30px rgba(255,255,255,0.3)', position: 'absolute' }}>
-                  {formatTime(timeLeft)}
-                </div>
-                
-                {isActive && (
-                  <motion.div 
-                    animate={{ scale: [1, 1.15, 1], opacity: [0, 0.15, 0] }}
-                    transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
-                    style={{ position: 'absolute', inset: 30, border: `2px solid ${theme.colors[1]}`, borderRadius: '50%', pointerEvents: 'none' }}
-                  />
-                )}
-              </motion.div>
-            </div>
-
-            {/* Game Canvas Container */}
-            <div style={{ display: gameMode ? 'block' : 'none', position: 'absolute', inset: 0, border: '1px solid rgba(255,255,255,0.1)', borderRadius: '20px', overflow: 'hidden', background: 'rgba(9,9,11,0.6)', backdropFilter: 'blur(10px)', boxShadow: '0 10px 40px rgba(0,0,0,0.6)' }}>
-              <canvas 
-                ref={canvasRef} 
-                width="400" 
-                height="420" 
-                style={{ display: 'block', width: '100%', height: '100%', cursor: 'none' }}
-              />
-            </div>
           </div>
 
-          {/* Floating Controls */}
-          <motion.div 
-            initial={{ y: 30, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.3, type: 'spring' }}
-            style={{ marginTop: '50px', display: 'flex', gap: '35px', alignItems: 'center' }}
-          >
-            <motion.button
-              whileHover={{ scale: 1.1, backgroundColor: 'rgba(255,255,255,0.1)', rotate: -20 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={(e) => { e.stopPropagation(); resetTimer(); }}
-              style={{ width: '65px', height: '65px', borderRadius: '50%', border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.02)', color: 'rgba(255,255,255,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer', backdropFilter: 'blur(10px)', outline: 'none' }}
-            >
-              <RotateCcw size={26} />
-            </motion.button>
-
-            <motion.button
-              whileHover={{ scale: 1.05, boxShadow: `0 0 40px ${theme.colors[1]}b3` }}
-              whileTap={{ scale: 0.95 }}
-              onClick={(e) => { e.stopPropagation(); toggleTimer(); }}
-              style={{ width: '96px', height: '96px', borderRadius: '50%', border: 'none', background: `linear-gradient(135deg, ${theme.colors[0]}, ${theme.colors[2]})`, color: 'white', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer', outline: 'none', boxShadow: `0 10px 30px ${theme.colors[2]}66`, position: 'relative', overflow: 'hidden' }}
-            >
-              {isActive ? <Pause size={44} /> : <Play size={44} style={{ marginLeft: '6px' }} />}
-              
-              <motion.div 
-                animate={{ opacity: [0.3, 0.8, 0.3] }}
-                transition={{ duration: 2.5, repeat: Infinity }}
-                style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle, rgba(255,255,255,0.5) 0%, transparent 60%)', pointerEvents: 'none' }}
-              />
-            </motion.button>
-            
-            <motion.button
-              whileHover={{ scale: 1.1, backgroundColor: 'rgba(255,255,255,0.1)', rotate: 20 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={changeTheme}
-              style={{ width: '65px', height: '65px', borderRadius: '50%', border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.02)', color: 'rgba(255,255,255,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer', backdropFilter: 'blur(10px)', outline: 'none' }}
-            >
-              <Sparkles size={26} />
-            </motion.button>
-          </motion.div>
-          
-          {/* Helper State Text */}
-          <motion.div style={{ marginTop: '35px', height: '24px' }}>
-            <AnimatePresence mode="wait">
-              <motion.p
-                key={isActive ? 'active' : 'inactive'}
-                initial={{ opacity: 0, y: 15, filter: 'blur(4px)' }}
-                animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-                exit={{ opacity: 0, y: -15, filter: 'blur(4px)' }}
-                transition={{ duration: 0.3 }}
-                style={{ fontSize: '1.1rem', color: 'rgba(255,255,255,0.6)', fontWeight: 300, letterSpacing: '3px' }}
-              >
-                {gameMode 
-                  ? (isActive ? "Move mouse/finger to steer rocket!" : "Engines off. Press Play to start.")
-                  : (isActive ? "Breathe in. Breathe out." : "Take control. Start when ready.")}
-              </motion.p>
-            </AnimatePresence>
-          </motion.div>
-          
-          {/* Theme indicator */}
-          <div style={{ marginTop: '15px' }}>
-              <span style={{ fontSize: '0.8rem', color: theme.colors[0], fontWeight: 600, letterSpacing: '2px', textTransform: 'uppercase' }}>
-                {theme.name} Theme
-              </span>
+          {/* Game Canvas Container */}
+          <div style={{ display: gameMode ? 'block' : 'none', position: 'absolute', inset: 0, border: '1px solid rgba(255,255,255,0.1)', borderRadius: '20px', overflow: 'hidden', background: 'rgba(9,9,11,0.6)', backdropFilter: 'blur(10px)', boxShadow: '0 10px 40px rgba(0,0,0,0.6)' }}>
+            <canvas 
+              ref={canvasRef} 
+              width="400" 
+              height="420" 
+              style={{ display: 'block', width: '100%', height: '100%', cursor: 'none' }}
+            />
           </div>
         </div>
 
-        {/* Right Sidebar: Cleared Distractions Log */}
-        <AnimatePresence>
-          {gameMode && (
+        {/* Floating Controls */}
+        <motion.div 
+          initial={{ y: 30, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.3, type: 'spring' }}
+          style={{ marginTop: '50px', display: 'flex', gap: '35px', alignItems: 'center' }}
+        >
+          <motion.button
+            whileHover={{ scale: 1.1, backgroundColor: 'rgba(255,255,255,0.1)', rotate: -20 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={(e) => { e.stopPropagation(); resetTimer(); }}
+            style={{ width: '65px', height: '65px', borderRadius: '50%', border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.02)', color: 'rgba(255,255,255,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer', backdropFilter: 'blur(10px)', outline: 'none' }}
+          >
+            <RotateCcw size={26} />
+          </motion.button>
+
+          <motion.button
+            whileHover={{ scale: 1.05, boxShadow: `0 0 40px ${theme.colors[1]}b3` }}
+            whileTap={{ scale: 0.95 }}
+            onClick={(e) => { e.stopPropagation(); toggleTimer(); }}
+            style={{ width: '96px', height: '96px', borderRadius: '50%', border: 'none', background: `linear-gradient(135deg, ${theme.colors[0]}, ${theme.colors[2]})`, color: 'white', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer', outline: 'none', boxShadow: `0 10px 30px ${theme.colors[2]}66`, position: 'relative', overflow: 'hidden' }}
+          >
+            {isActive ? <Pause size={44} /> : <Play size={44} style={{ marginLeft: '6px' }} />}
+            
             <motion.div 
-              initial={{ opacity: 0, x: 40, width: 0 }}
-              animate={{ opacity: 1, x: 0, width: 280 }}
-              exit={{ opacity: 0, x: 40, width: 0 }}
-              transition={{ type: 'spring', stiffness: 200, damping: 25 }}
-              style={{
-                height: '420px',
-                background: 'rgba(24, 24, 27, 0.4)',
-                border: '1px solid rgba(255, 255, 255, 0.08)',
-                borderRadius: '24px',
-                padding: '24px',
-                display: 'flex',
-                flexDirection: 'column',
-                backdropFilter: 'blur(15px)',
-                boxShadow: '0 10px 40px rgba(0,0,0,0.4)',
-                overflow: 'hidden'
-              }}
+              animate={{ opacity: [0.3, 0.8, 0.3] }}
+              transition={{ duration: 2.5, repeat: Infinity }}
+              style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle, rgba(255,255,255,0.5) 0%, transparent 60%)', pointerEvents: 'none' }}
+            />
+          </motion.button>
+          
+          <motion.button
+            whileHover={{ scale: 1.1, backgroundColor: 'rgba(255,255,255,0.1)', rotate: 20 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={changeTheme}
+            style={{ width: '65px', height: '65px', borderRadius: '50%', border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.02)', color: 'rgba(255,255,255,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer', backdropFilter: 'blur(10px)', outline: 'none' }}
+          >
+            <Sparkles size={26} />
+          </motion.button>
+        </motion.div>
+        
+        {/* Helper State Text */}
+        <motion.div style={{ marginTop: '35px', height: '24px' }}>
+          <AnimatePresence mode="wait">
+            <motion.p
+              key={isActive ? 'active' : 'inactive'}
+              initial={{ opacity: 0, y: 15, filter: 'blur(4px)' }}
+              animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+              exit={{ opacity: 0, y: -15, filter: 'blur(4px)' }}
+              transition={{ duration: 0.3 }}
+              style={{ fontSize: '1.1rem', color: 'rgba(255,255,255,0.6)', fontWeight: 300, letterSpacing: '3px' }}
             >
-              <h4 style={{ fontSize: '1rem', fontWeight: 600, color: 'rgba(255, 255, 255, 0.9)', letterSpacing: '2px', marginBottom: '20px', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '12px', flexShrink: 0 }}>
-                CLEARED DISTRACTIONS
-              </h4>
-              
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', overflowY: 'auto', flex: 1, paddingRight: '4px' }}>
-                <AnimatePresence initial={false}>
-                  {clearedLog.map((log) => (
-                    <motion.div
-                      key={log.id}
-                      initial={{ opacity: 0, y: -15, scale: 0.9 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, transition: { duration: 0.15 } }}
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        padding: '12px 16px',
-                        background: 'rgba(255, 255, 255, 0.02)',
-                        borderLeft: `4px solid ${log.color}`,
-                        borderRadius: '8px',
-                        fontSize: '1rem',
-                        color: '#ffffff',
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
-                      }}
-                    >
-                      <span style={{ fontWeight: 500, letterSpacing: '0.5px' }}>
-                        Cleared: <span style={{ color: log.color, fontWeight: 600 }}>{log.text}</span>
-                      </span>
-                      <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.75rem' }}>
-                        {log.time}
-                      </span>
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-                
-                {clearedLog.length === 0 && (
-                  <div style={{ color: 'rgba(255, 255, 255, 0.3)', fontSize: '0.95rem', textAlign: 'center', marginTop: '60px', fontWeight: 300, letterSpacing: '1px' }}>
-                    No distractions cleared yet. Start blasting!
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+              {gameMode 
+                ? (isActive ? "Move mouse/finger to steer rocket!" : "Engines off. Press Play to start.")
+                : (isActive ? "Breathe in. Breathe out." : "Take control. Start when ready.")}
+            </motion.p>
+          </AnimatePresence>
+        </motion.div>
+        
+        {/* Theme indicator */}
+        <div style={{ marginTop: '15px' }}>
+            <span style={{ fontSize: '0.8rem', color: theme.colors[0], fontWeight: 600, letterSpacing: '2px', textTransform: 'uppercase' }}>
+              {theme.name} Theme
+            </span>
+        </div>
       </div>
 
       {/* Grounding Check-in Modal Overlay */}
