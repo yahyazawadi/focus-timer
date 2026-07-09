@@ -157,9 +157,9 @@ const BurstParticles = ({ trigger, colors }) => {
   );
 };
 
-const VictoryConfetti = ({ active }) => {
+const VictoryConfetti = ({ active, theme }) => {
   if (!active) return null;
-  const colors = ['#fbbf24', '#f59e0b', '#38bdf8', '#e879f9', '#a78bfa', '#34d399'];
+  const colors = theme.colors;
   const confetti = Array.from({ length: 50 });
   return (
     <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 120 }}>
@@ -580,7 +580,7 @@ export default function App() {
 
       <Particles theme={theme} />
       <BurstParticles trigger={burst} colors={theme.colors} />
-      <VictoryConfetti active={showWinScreen} />
+      <VictoryConfetti active={showWinScreen} theme={theme} />
 
       {/* Floating Cleared Distractions (Left & Right Sides) */}
       <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 5 }}>
@@ -616,9 +616,20 @@ export default function App() {
                 backdropFilter: 'blur(8px)',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '8px'
+                gap: '12px'
               }}
             >
+              {/* Dead Ghost SVG Icon */}
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={item.color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ filter: `drop-shadow(0 0 5px ${item.color})` }}>
+                {/* Ghost Outline */}
+                <path d="M19 11c0-3.87-3.13-7-7-7s-7 3.13-7 7v8c0 .5.2.9.5 1.2.3.3.7.5 1.1.3l1.9-1 1.9 1c.4.2.8.2 1.2 0l1.9-1 1.9 1c.4.2.8.2 1.1-.3.3-.3.5-.7.5-1.2v-8z" />
+                {/* Left Eye X */}
+                <path d="M8.5 9.5l2 2M10.5 9.5l-2 2" />
+                {/* Right Eye X */}
+                <path d="M13.5 9.5l2 2M15.5 9.5l-2 2" />
+                {/* Flat mouth */}
+                <path d="M10.5 14.5h3" />
+              </svg>
               <span style={{ textDecoration: 'line-through', opacity: 0.6, color: item.color }}>{item.text}</span>
               <span style={{ fontSize: '0.8rem', color: '#10b981', fontWeight: 800 }}>CLEARED</span>
             </motion.div>
@@ -900,38 +911,38 @@ export default function App() {
               transition={{ type: 'spring', damping: 15 }}
               style={{ 
                 background: 'rgba(20, 20, 23, 0.85)', 
-                border: '2px solid #fbbf24', 
+                border: `2px solid ${theme.colors[1]}`, 
                 padding: '40px 30px', 
                 borderRadius: '30px', 
                 maxWidth: '520px', 
                 width: '100%', 
                 textAlign: 'center', 
                 position: 'relative', 
-                boxShadow: '0 0 50px rgba(251, 191, 36, 0.3), inset 0 0 20px rgba(251, 191, 36, 0.1)' 
+                boxShadow: `0 0 50px ${theme.colors[1]}4d, inset 0 0 20px ${theme.colors[1]}1a`
               }}
             >
-              {/* Giant Glowing Trophy Icon */}
+              {/* Giant Glowing Trophy Icon in Theme Colors */}
               <motion.div
                 animate={{ scale: [1, 1.12, 1], rotate: [0, 5, -5, 0] }}
                 transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
-                style={{ display: 'inline-flex', background: 'radial-gradient(circle, rgba(251, 191, 36, 0.2) 0%, transparent 70%)', padding: '30px', borderRadius: '50%', marginBottom: '20px' }}
+                style={{ display: 'inline-flex', background: `radial-gradient(circle, ${theme.colors[1]}33 0%, transparent 70%)`, padding: '30px', borderRadius: '50%', marginBottom: '20px' }}
               >
-                <Award size={80} color="#fbbf24" style={{ filter: 'drop-shadow(0 0 15px #fbbf24)' }} />
+                <Award size={80} color={theme.colors[1]} style={{ filter: `drop-shadow(0 0 15px ${theme.colors[1]})` }} />
               </motion.div>
 
-              <h2 style={{ fontSize: '2.5rem', fontWeight: 800, color: '#ffffff', letterSpacing: '2px', textShadow: '0 0 20px rgba(255,255,255,0.4)', margin: '0 0 10px 0' }}>
+              <h2 style={{ fontSize: '2.5rem', fontWeight: 800, color: '#ffffff', letterSpacing: '2px', textShadow: `0 0 20px ${theme.colors[0]}66`, margin: '0 0 10px 0' }}>
                 FOCUS CHAMPION!
               </h2>
 
               <p style={{ fontSize: '1.2rem', color: 'rgba(255, 255, 255, 0.7)', fontWeight: 300, lineHeight: 1.6, marginBottom: '30px', padding: '0 15px' }}>
-                Incredible work. You stood firm, focused your mind, and blasted through <span style={{ color: '#fbbf24', fontWeight: 600 }}>{WIN_SCORE} points</span> of distractions. You are grounded, centered, and fully in control.
+                Incredible work. You stood firm, focused your mind, and blasted through <span style={{ color: theme.colors[0], fontWeight: 600 }}>{WIN_SCORE} points</span> of distractions. You are grounded, centered, and fully in control.
               </p>
 
               {/* Stats Block */}
               <div style={{ display: 'flex', gap: '15px', justifyContent: 'center', marginBottom: '35px' }}>
                 <div style={{ flex: 1, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '15px', padding: '15px 10px' }}>
                   <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase' }}>Distractions Blasted</div>
-                  <div style={{ fontSize: '1.8rem', color: '#fbbf24', fontWeight: 700, marginTop: '5px' }}>{Math.floor(score / 10)}</div>
+                  <div style={{ fontSize: '1.8rem', color: theme.colors[1], fontWeight: 700, marginTop: '5px' }}>{Math.floor(score / 10)}</div>
                 </div>
                 <div style={{ flex: 1, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '15px', padding: '15px 10px' }}>
                   <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase' }}>Mind State</div>
@@ -942,10 +953,10 @@ export default function App() {
               {/* Actions */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                 <motion.button
-                  whileHover={{ scale: 1.03, boxShadow: '0 0 25px rgba(251, 191, 36, 0.6)' }}
+                  whileHover={{ scale: 1.03, boxShadow: `0 0 25px ${theme.colors[1]}80` }}
                   whileTap={{ scale: 0.97 }}
                   onClick={() => { playSound('click', soundEnabled); setWinAcknowledged(true); setShowWinScreen(false); }}
-                  style={{ background: 'linear-gradient(135deg, #fbbf24, #f59e0b)', border: 'none', padding: '16px', borderRadius: '30px', color: '#09090b', cursor: 'pointer', outline: 'none', fontSize: '1.1rem', fontWeight: 700, letterSpacing: '1px' }}
+                  style={{ background: `linear-gradient(135deg, ${theme.colors[0]}, ${theme.colors[1]})`, border: 'none', padding: '16px', borderRadius: '30px', color: '#ffffff', cursor: 'pointer', outline: 'none', fontSize: '1.1rem', fontWeight: 700, letterSpacing: '1px' }}
                 >
                   Keep Blasting Distractions
                 </motion.button>
