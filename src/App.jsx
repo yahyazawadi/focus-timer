@@ -4,6 +4,7 @@ import { Play, Pause, RotateCcw, Volume2, VolumeX, Sparkles, Activity, Heart, X,
 import './index.css';
 
 const FOCUS_TIME = 12 * 60;
+const WIN_SCORE = 670;
 
 // Web Audio API Helper
 let audioCtx = null;
@@ -273,7 +274,7 @@ export default function App() {
 
   // Score checking for victory
   useEffect(() => {
-    if (score >= 10000 && !winAcknowledged && !showWinScreen) {
+    if (score >= WIN_SCORE && !winAcknowledged && !showWinScreen) {
       setIsActive(false);
       setShowWinScreen(true);
       playSound('victory', soundEnabled);
@@ -923,14 +924,14 @@ export default function App() {
               </h2>
 
               <p style={{ fontSize: '1.2rem', color: 'rgba(255, 255, 255, 0.7)', fontWeight: 300, lineHeight: 1.6, marginBottom: '30px', padding: '0 15px' }}>
-                Incredible work. You stood firm, focused your mind, and blasted through <span style={{ color: '#fbbf24', fontWeight: 600 }}>10,000 points</span> of distractions. You are grounded, centered, and fully in control.
+                Incredible work. You stood firm, focused your mind, and blasted through <span style={{ color: '#fbbf24', fontWeight: 600 }}>{WIN_SCORE} points</span> of distractions. You are grounded, centered, and fully in control.
               </p>
 
               {/* Stats Block */}
               <div style={{ display: 'flex', gap: '15px', justifyContent: 'center', marginBottom: '35px' }}>
                 <div style={{ flex: 1, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '15px', padding: '15px 10px' }}>
                   <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase' }}>Distractions Blasted</div>
-                  <div style={{ fontSize: '1.8rem', color: '#fbbf24', fontWeight: 700, marginTop: '5px' }}>1,000</div>
+                  <div style={{ fontSize: '1.8rem', color: '#fbbf24', fontWeight: 700, marginTop: '5px' }}>{Math.floor(score / 10)}</div>
                 </div>
                 <div style={{ flex: 1, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '15px', padding: '15px 10px' }}>
                   <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase' }}>Mind State</div>
