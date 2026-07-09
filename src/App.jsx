@@ -272,21 +272,14 @@ export default function App() {
         enemy.y += enemy.speed;
       });
 
-      // Filter out enemies that reach bottom (recharges shield without losing game)
-      enemies = enemies.filter(enemy => {
-        if (enemy.y > canvas.height) {
-          // Play soft background blast to indicate it passed
-          return false;
-        }
-        return true;
-      });
+      // Filter out enemies that reach bottom
+      enemies = enemies.filter(enemy => enemy.y <= canvas.height);
 
       // Collisions
       lasers.forEach((laser, lIdx) => {
         enemies.forEach((enemy, eIdx) => {
           const dist = Math.hypot(laser.x - enemy.x, laser.y - enemy.y);
           if (dist < enemy.size + 15) {
-            // Collision detected!
             playSound('explosion', soundEnabled);
             setScore(s => s + 10);
             
@@ -348,7 +341,7 @@ export default function App() {
         ctx.restore();
       });
 
-      // Draw Lasers (Glowing lines)
+      // Draw Lasers
       lasers.forEach(laser => {
         ctx.shadowBlur = 10;
         ctx.shadowColor = theme.colors[0];
@@ -360,7 +353,7 @@ export default function App() {
         ctx.stroke();
       });
 
-      // Draw Player Rocket (Sleek sci-fi triangle)
+      // Draw Player Rocket
       ctx.shadowBlur = 15;
       ctx.shadowColor = theme.colors[1];
       ctx.fillStyle = '#ffffff';
@@ -383,7 +376,7 @@ export default function App() {
         ctx.fill();
       }
 
-      // Draw Enemies (Distractions)
+      // Draw Enemies
       enemies.forEach(enemy => {
         ctx.shadowBlur = 15;
         ctx.shadowColor = enemy.color;
@@ -521,76 +514,61 @@ export default function App() {
           </motion.div>
         )}
 
-        {/* Screen Content Toggle */}
-        <AnimatePresence mode="wait">
-          {!gameMode ? (
-            <motion.div
-              key="timer-circle"
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.8, opacity: 0 }}
-              transition={{ type: 'spring', damping: 20 }}
-              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}
+        <div style={{ position: 'relative', width: '400px', height: '420px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+          {/* Focus Ring Graphic */}
+          <div style={{ display: !gameMode ? 'block' : 'none', position: 'absolute', inset: 0 }}>
+            <motion.div 
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              style={{ position: 'relative', width: '400px', height: '400px', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer' }}
+              onClick={toggleTimer}
             >
-              {/* Focus Ring Graphic */}
-              <motion.div 
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                style={{ position: 'relative', width: '400px', height: '400px', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer' }}
-                onClick={toggleTimer}
-              >
-                <svg width="400" height="400" viewBox="0 0 400 400" style={{ position: 'absolute', transform: 'rotate(-90deg)' }}>
-                  <circle cx="200" cy="200" r="180" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="6" />
-                  <motion.circle 
-                    cx="200" cy="200" r="180" 
-                    fill="none" 
-                    stroke="url(#gradientMain)" 
-                    strokeWidth="8"
-                    strokeLinecap="round"
-                    strokeDasharray={strokeLength}
-                    animate={{ strokeDashoffset: strokeLength - (progress * strokeLength) }}
-                    transition={{ duration: 1, ease: "linear" }}
-                    style={{ filter: `drop-shadow(0 0 15px ${theme.colors[2]}80)` }}
-                  />
-                  <defs>
-                    <linearGradient id="gradientMain" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stopColor={theme.colors[0]} />
-                      <stop offset="50%" stopColor={theme.colors[1]} />
-                      <stop offset="100%" stopColor={theme.colors[2]} />
-                    </linearGradient>
-                  </defs>
-                </svg>
+              <svg width="400" height="400" viewBox="0 0 400 400" style={{ position: 'absolute', transform: 'rotate(-90deg)' }}>
+                <circle cx="200" cy="200" r="180" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="6" />
+                <motion.circle 
+                  cx="200" cy="200" r="180" 
+                  fill="none" 
+                  stroke="url(#gradientMain)" 
+                  strokeWidth="8"
+                  strokeLinecap="round"
+                  strokeDasharray={strokeLength}
+                  animate={{ strokeDashoffset: strokeLength - (progress * strokeLength) }}
+                  transition={{ duration: 1, ease: "linear" }}
+                  style={{ filter: `drop-shadow(0 0 15px ${theme.colors[2]}80)` }}
+                />
+                <defs>
+                  <linearGradient id="gradientMain" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor={theme.colors[0]} />
+                    <stop offset="50%" stopColor={theme.colors[1]} />
+                    <stop offset="100%" stopColor={theme.colors[2]} />
+                  </linearGradient>
+                </defs>
+              </svg>
 
-                <div style={{ fontSize: '6.5rem', fontWeight: 200, letterSpacing: '6px', color: '#ffffff', textShadow: '0 0 30px rgba(255,255,255,0.3)', position: 'absolute' }}>
-                  {formatTime(timeLeft)}
-                </div>
-                
-                {isActive && (
-                  <motion.div 
-                    animate={{ scale: [1, 1.15, 1], opacity: [0, 0.15, 0] }}
-                    transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
-                    style={{ position: 'absolute', inset: 30, border: `2px solid ${theme.colors[1]}`, borderRadius: '50%', pointerEvents: 'none' }}
-                  />
-                )}
-              </motion.div>
+              <div style={{ fontSize: '6.5rem', fontWeight: 200, letterSpacing: '6px', color: '#ffffff', textShadow: '0 0 30px rgba(255,255,255,0.3)', position: 'absolute' }}>
+                {formatTime(timeLeft)}
+              </div>
+              
+              {isActive && (
+                <motion.div 
+                  animate={{ scale: [1, 1.15, 1], opacity: [0, 0.15, 0] }}
+                  transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
+                  style={{ position: 'absolute', inset: 30, border: `2px solid ${theme.colors[1]}`, borderRadius: '50%', pointerEvents: 'none' }}
+                />
+              )}
             </motion.div>
-          ) : (
-            <motion.div
-              key="game-canvas"
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.8, opacity: 0 }}
-              style={{ position: 'relative', width: '400px', height: '420px', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '20px', overflow: 'hidden', background: 'rgba(9,9,11,0.6)', backdropFilter: 'blur(10px)', boxShadow: '0 10px 40px rgba(0,0,0,0.6)' }}
-            >
-              <canvas 
-                ref={canvasRef} 
-                width="400" 
-                height="420" 
-                style={{ display: 'block', width: '100%', height: '100%', cursor: 'none' }}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
+          </div>
+
+          {/* Game Canvas Container */}
+          <div style={{ display: gameMode ? 'block' : 'none', position: 'absolute', inset: 0, border: '1px solid rgba(255,255,255,0.1)', borderRadius: '20px', overflow: 'hidden', background: 'rgba(9,9,11,0.6)', backdropFilter: 'blur(10px)', boxShadow: '0 10px 40px rgba(0,0,0,0.6)' }}>
+            <canvas 
+              ref={canvasRef} 
+              width="400" 
+              height="420" 
+              style={{ display: 'block', width: '100%', height: '100%', cursor: 'none' }}
+            />
+          </div>
+        </div>
 
         {/* Floating Controls */}
         <motion.div 
